@@ -1,0 +1,5 @@
+.idea/
+out/
+.idea_modules/
+composer.phar
+vendor/
