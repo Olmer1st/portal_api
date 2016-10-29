@@ -1,4 +1,0 @@
-#DirectoryIndex error.html
-#deny from all
-#Options All -Indexes
-#ErrorDocument 404 error.html

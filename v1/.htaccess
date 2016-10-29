@@ -1,4 +1,0 @@
-# order deny,allow
-# deny from all
-# Options All -Indexes
-# ErrorDocument 404 ../error.html
