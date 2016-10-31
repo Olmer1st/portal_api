@@ -35,9 +35,10 @@ $app->get('/languages', function (Request $request, Response $response) {
     }
     return $response->withJson($languages, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
-$app->get('/books/author/{aid}', function (Request $request, Response $response) {
+$app->get('/books/author/{aid}/{lang}', function (Request $request, Response $response) {
     $db = $this->get('settings')['notOrm'];
     $aid = $request->getAttribute('aid');
+    $lang = $request->getAttribute('lang');
     $booksRef = $db->lib_author2book()->select("aid, bid")->where("aid", $aid)->fetchPairs("bid");
     $bookIds = [];
     foreach ($booksRef as $refBook) {
@@ -46,7 +47,8 @@ $app->get('/books/author/{aid}', function (Request $request, Response $response)
     $res = $db->lib_books()
         ->select("bid, author, genre, title, series, serno, file, size,  ext, date, lang, path")
         ->where("bid", $bookIds)
-        ->where("del", null);
+        ->where("del", null)
+        ->where("lang", $lang);
     $books = [
         'totalIds' => count($bookIds),
         'totalBooks' => $res->count(),
