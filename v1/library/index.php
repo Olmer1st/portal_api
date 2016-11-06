@@ -110,13 +110,13 @@ $app->get('/books/author/{aid}/{lang}', function (Request $request, Response $re
         }
     }
 
-    $books = [
+    $treeInfo = [
         'totalIds' => count($bookIds),
         'totalBooks' => $allBooks->count(),
-        'books' => array_merge($booksTree, $booksWithoutSerie)
+        'treeData' => array_merge($booksTree, $booksWithoutSerie)
     ];
 
-    return $response->withJson($books, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return $response->withJson($treeInfo, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
 $app->run();

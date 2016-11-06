@@ -36,6 +36,7 @@ class Node
     public $title = "";
     public $type = 0;
     public $level = -1;
+    public $collapsed = false;
     public $bookInfo = null;
 
     public function __construct($parameters = array())
