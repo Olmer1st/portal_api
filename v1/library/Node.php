@@ -32,11 +32,13 @@ export interface BookInfo {
 namespace Tree;
 class Node
 {
-    public $id = -1;
+    public $id = "";
     public $title = "";
     public $type = 0;
     public $level = -1;
+    public $parent = "";
     public $collapsed = false;
+    public $hidden = false;
     public $bookInfo = null;
 
     public function __construct($parameters = array())
