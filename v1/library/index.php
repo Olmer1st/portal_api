@@ -79,8 +79,6 @@ export interface GenreInfo {
     edesc: string;
 }
 
-echo bin2hex($str)
-echo pack("H*",bin2hex($str)) . "<br />";
  */
 $app->get('/genres', function (Request $request, Response $response) {
     $db = $this->get('settings')['notOrm'];
@@ -94,14 +92,18 @@ $app->get('/genres', function (Request $request, Response $response) {
             "gdesc" => $row["gdesc"],
             "edesc" => $row["edesc"]]);
 
-        $genreIds = array_map($callbackForIds, iterator_to_array($db->lib_genre2group()->select("gid")->where("gidm", $row["gid"])));
+        $genreIds = array_map($callbackForIds, iterator_to_array($db->lib_genre2group()
+            ->select("gid")
+            ->where("gidm", $row["gid"])));
         $genres = array_map(function ($genre) {
             $genreInfo = new GenreInfo(["gid" => $genre["gid"],
                 "code" => $genre["code"],
                 "gdesc" => $genre["gdesc"],
                 "edesc" => $genre["edesc"]]);
             return $genreInfo;
-        }, iterator_to_array($db->lib_genres()->select("gid,code,gdesc,edesc")->where("gid", $genreIds)));
+        }, iterator_to_array($db->lib_genres()
+            ->select("gid,code,gdesc,edesc")
+            ->where("gid", $genreIds)));
 
         return [
             "details" => $genreInfo,
@@ -109,31 +111,102 @@ $app->get('/genres', function (Request $request, Response $response) {
         ];
     };
 
-    $groupIds = array_map($callbackForIds, iterator_to_array($db->lib_genre2group()->select("DISTINCT gidm as 'gid'")));
-    $groups = array_map($createGenreTree, iterator_to_array($db->lib_genres()->select("gid,code,gdesc,edesc")->where("gid", $groupIds)));
+    $groupIds = array_map($callbackForIds, iterator_to_array($db->lib_genre2group()
+        ->select("DISTINCT gidm as 'gid'")));
+    $groups = array_map($createGenreTree, iterator_to_array($db->lib_genres()
+        ->select("gid,code,gdesc,edesc")
+        ->where("gid", $groupIds)));
 
     return $response->withJson($groups, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+$app->get('/books/genre/{gid}/{lang}', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $gid = $request->getAttribute('gid');
+    $lang = $request->getAttribute('lang');
+    $start = microtime(true);
+    $callbackIds = function ($row) {
+        return $row["bid"];
+    };
+    $bookIds = array_map($callbackIds, iterator_to_array($db->lib_genre2book()
+        ->select("gid, bid")
+        ->where("gid", $gid)));
+    $authorRefs = [];
+    foreach ($db->lib_author2book()->select("aid, bid")->where("bid", $bookIds) as $authorRef) {
+        if (!array_key_exists($authorRef["aid"], $authorRefs)) {
+            $authorRefs[$authorRef["aid"]] = [$authorRef["bid"]];
+        } else {
+            array_push($authorRefs[$authorRef["aid"]], $authorRef["bid"]);
+        }
+
+    }
+    $booksTree = [];
+    $booksCount = 0;
+    foreach ($db->lib_authors()->select("aid, fullname")->where("aid", array_keys($authorRefs))->order("fullname ASC") as $author){
+        $nodeAuthor = new Node(["id" => $author["aid"],
+            "title" => $author["fullname"],
+            "type" => 2,
+            "level" => 0]);
+        array_push($booksTree, $nodeAuthor);
+        foreach ($db->lib_books()
+                     ->select("bid, author, genre, title, series, serno, file, size,  ext, date, lang, path")
+                     ->where("bid", $authorRefs[$author["aid"]])
+                     ->where("del", null)
+                     ->where("lang", $lang)
+                     ->order("series ASC, serno ASC, title ASC") as $book){
+            $booksCount ++;
+            if (isset($book["series"]) && strlen($book["series"]) > 0) {
+                $serieId = md5($book["series"]);
+                $nodeSerie = new Node(["id" => $serieId,
+                    "title" => $book["series"],
+                    "type" => 3,
+                    "level" => 1,
+                    "parent" => $author["aid"]]);
+                if (!in_array($nodeSerie, $booksTree))
+                    array_push($booksTree, $nodeSerie);
+
+                $bookInfo = new BookInfo($book);
+                $nodeBook = new Node(["id" => $book["bid"],
+                    "title" => $book["title"],
+                    "type" => 1,
+                    "level" => 2,
+                    "parent" => $serieId,
+                    "bookInfo" => $bookInfo]);
+                array_push($booksTree, $nodeBook);
+            } else {
+                $bookInfo = new BookInfo($book);
+                $nodeBook = new Node(["id" => $book["bid"],
+                    "title" => $book["title"],
+                    "type" => 1,
+                    "level" => 1,
+                    "bookInfo" => $bookInfo]);
+                array_push($booksTree, $nodeBook);
+            }
+        }
+    }
+
+
+    $treeInfo = [
+        'microtime' => microtime(true) - $start,
+        'totalIds' => count($bookIds),
+        'totalBooks' => $booksCount,
+        'maxLevel' => 2,
+        'treeData' => $booksTree//array_merge(, $booksWithoutSerie)
+    ];
+
+    return $response->withJson($treeInfo, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 $app->get('/books/author/{aid}/{lang}', function (Request $request, Response $response) {
     $db = $this->get('settings')['notOrm'];
     $aid = $request->getAttribute('aid');
     $lang = $request->getAttribute('lang');
-    $booksRef = $db->lib_author2book()->select("aid, bid")->where("aid", $aid)->fetchPairs("bid");
-    $bookIds = [];
-    foreach ($booksRef as $refBook) {
-        array_push($bookIds, $refBook["bid"]);
-    }
-    $allBooks = $db->lib_books()
-        ->select("bid, author, genre, title, series, serno, file, size,  ext, date, lang, path")
-        ->where("bid", $bookIds)
-        ->where("del", null)
-        ->where("lang", $lang)
-        ->order("series ASC, serno ASC, title ASC");
+    $callbackIds = function ($row) {
+        return $row["bid"];
+    };
     $booksTree = [];
     $booksWithoutSerie = [];
-    foreach ($allBooks as $book) {
+    $createTreeInfo = function ($book) use (&$booksTree, &$booksWithoutSerie) {
         if (isset($book["series"]) && strlen($book["series"]) > 0) {
-            $serieId = md5($book["series"]); //bin2hex($book["series"]);
+            $serieId = md5($book["series"]);
             $nodeSerie = new Node(["id" => $serieId,
                 "title" => $book["series"],
                 "type" => 3,
@@ -158,11 +231,21 @@ $app->get('/books/author/{aid}/{lang}', function (Request $request, Response $re
                 "bookInfo" => $bookInfo->toArray()]);
             array_push($booksWithoutSerie, $nodeBook);
         }
-    }
+        return $book["bid"];
+    };
+    $bookIds = array_map($callbackIds, iterator_to_array($db->lib_author2book()
+        ->select("aid, bid")
+        ->where("aid", $aid)));
+    $allBooks = array_map($createTreeInfo, iterator_to_array($db->lib_books()
+        ->select("bid, author, genre, title, series, serno, file, size,  ext, date, lang, path")
+        ->where("bid", $bookIds)
+        ->where("del", null)
+        ->where("lang", $lang)
+        ->order("series ASC, serno ASC, title ASC")));
 
     $treeInfo = [
         'totalIds' => count($bookIds),
-        'totalBooks' => $allBooks->count(),
+        'totalBooks' => count($allBooks),
         'maxLevel' => 1,
         'treeData' => array_merge($booksTree, $booksWithoutSerie)
     ];
