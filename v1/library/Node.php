@@ -40,7 +40,7 @@ class Node
     public $collapsed = false;
     public $hidden = false;
     public $bookInfo = null;
-
+    //public $kids = [];
     public function __construct($parameters = array())
     {
         foreach ($parameters as $key => $value) {
