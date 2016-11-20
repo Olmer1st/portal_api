@@ -32,19 +32,17 @@ export interface BookInfo {
 namespace Tree;
 class Node
 {
-    public $id = "";
-    public $title = "";
-    public $type = 0;
-    public $level = -1;
-    public $parent = "";
-    public $collapsed = false;
-    public $hidden = false;
-    public $bookInfo = null;
-    //public $kids = [];
+    public $data = [
+        "id" => "",
+        "title" => "",
+        "type" => 0,
+        "bookInfo" => null
+    ];
+    public $children = null;
     public function __construct($parameters = array())
     {
         foreach ($parameters as $key => $value) {
-            $this->$key = $value;
+            $this->data[$key] = $value;
         }
     }
 

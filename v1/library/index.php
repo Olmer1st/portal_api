@@ -302,28 +302,34 @@ $app->get('/books/author/{aid}/{lang}', function (Request $request, Response $re
     $createTreeInfo = function ($book) use (&$booksTree, &$booksWithoutSerie) {
         if (isset($book["series"]) && strlen($book["series"]) > 0) {
             $serieId = md5($book["series"]);
-            $nodeSerie = new Node(["id" => $serieId,
-                "title" => $book["series"],
-                "type" => 3,
-                "level" => 0]);
-            if (!in_array($nodeSerie, $booksTree))
+            $nodeSerie = null;
+            $nodes = array_filter($booksTree,function($row) use ($serieId) {
+                return $row->data["id"] === $serieId;
+            });
+            if($nodes && count($nodes)>0){
+                $nodeSerie = current($nodes);
+            }else{
+                $nodeSerie = new Node(["id" => $serieId,
+                    "title" => $book["series"],
+                    "type" => 3,
+                    "children" => []]);
                 $booksTree[] = $nodeSerie;
+            }
+
 
             $bookInfo = new BookInfo($book);
             $nodeBook = new Node(["id" => $book["bid"],
                 "title" => $book["title"],
                 "type" => 1,
-                "level" => 1,
-                "parent" => $serieId,
                 "bookInfo" => $bookInfo]);
-            $booksTree[] = $nodeBook;
+            $nodeSerie->children[] = $nodeBook;
         } else {
             $bookInfo = new BookInfo($book);
             $nodeBook = new Node(["id" => $book["bid"],
                 "title" => $book["title"],
                 "type" => 1,
                 "level" => 0,
-                "bookInfo" => $bookInfo->toArray()]);
+                "bookInfo" => $bookInfo]);
             $booksWithoutSerie[] = $nodeBook;
         }
         return $book["bid"];
