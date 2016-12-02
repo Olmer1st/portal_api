@@ -147,14 +147,13 @@ $app->get('/series/all/{page}/{lang}[/{recordsnumber}]', function (Request $requ
         ->order("serie_name ASC")
         ->limit($num_rec_per_page, $start_from);
 
-//    $series = $db->lib_serie2book()
-//        ->select("sid, count(*)")
-//        ->where("bid", $allBooksIds)
-//        ->group("sid")
-//        ->limit($num_rec_per_page, $start_from);
+    $dataInfo = [
+        "totalItems" => count($serieNames),
+        "series" => $series
+    ];
 
 
-    return $response->withJson($series, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return $response->withJson($dataInfo, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
 $app->get('/series/search/{lang}[/{q}]', function (Request $request, Response $response) {
