@@ -143,7 +143,9 @@ $app->get('/series/all/{page}/{lang}[/{recordsnumber}]', function (Request $requ
 
 
     $series = $db->lib_series()
+        //->select("DISTINCT sid, serie_name")
         ->where("serie_name", $serieNames)
+        ->group("sid, serie_name")
         ->order("serie_name ASC")
         ->limit($num_rec_per_page, $start_from);
 
@@ -155,7 +157,51 @@ $app->get('/series/all/{page}/{lang}[/{recordsnumber}]', function (Request $requ
 
     return $response->withJson($dataInfo, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
-
+//$app->get('/series/update',function (Request $req, Response $res){
+//    $db = $this->get('settings')['notOrm'];
+//    $callbackNames = function ($row)  {
+//        return $row["serie_name"];
+//    };
+//    $callbackIds = function ($row)  {
+//        return $row["sid"];
+//    };
+//    $series = json_decode(file_get_contents('series.json'), true);
+//    $result = [
+//        "seqs"=>$series,
+//        "insertedSeqs"=>[],
+//        "insertedBooks"=>[]
+//    ];
+//    foreach ($series["serieNames"] as $name){
+//        $serie = $db->lib_series()->insert(["serie_name"=>$name]);
+//        $result["insertedSeqs"][] = $serie;
+//        foreach ($db->lib_books()
+//        ->select("bid, serno")
+//        ->where("series",$name) as $book){
+//            $sb = $db->lib_serie2book()->insert(["sid"=>$serie["id"],"bid"=> $book["bid"], "serie_number"=>$book["serno"]]);
+//            $result["insertedBooks"][] = $sb;
+//        }
+//    }
+////    $db->lib_books()
+////        ->select("bid, serno")
+////        ->where("series",$series["serieNames"]) as $book){
+////    $db->lib_serie2book()->insert([])
+////    $serieNames = array_map($callbackNames, iterator_to_array($db->lib_series()->group("serie_name", "count(*)>1")->select("serie_name")));
+////    $serieIds = array_map($callbackIds, iterator_to_array($db->lib_series()->select("serie_name, sid")->where("serie_name",$serieNames)));
+////
+////    $deletedIds=$db->lib_serie2book()->where("sid", $serieIds )->delete();
+////    $db->lib_series()->where("sid", $serieIds)->delete();
+//
+//
+////    $series =[
+////        "serieNames"=>$serieNames,
+////        "serieIds"=>$serieIds,
+////        "deletedIds"=>$deletedIds
+////    ];
+//
+//
+//    //file_put_contents("series.json",json_encode($series, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+//    return $res->withJson($result, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+//});
 $app->get('/series/search/{lang}[/{q}]', function (Request $request, Response $response) {
     $start = microtime(true);
     $db = $this->get('settings')['notOrm'];
@@ -358,6 +404,76 @@ $app->get('/books/genre/{gid}/{lang}', function (Request $request, Response $res
         'totalBooks' => $booksCount,
         'maxLevel' => 2,
         'treeData' => $booksTree//array_merge(, $booksWithoutSerie)
+    ];
+
+    return $response->withJson($treeInfo, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+$app->get('/books/serie/{sid}/{lang}', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $sid = $request->getAttribute('sid');
+    $lang = $request->getAttribute('lang');
+    $start = microtime(true);
+    $callbackIds = function ($row) {
+        return $row["bid"];
+    };
+    $bookIds = array_map($callbackIds, iterator_to_array($db->lib_serie2book()
+        ->select("sid, bid")
+        ->where("sid", $sid)));
+    $booksCount = 0;
+    $authorsData = [];
+    $addBooks = function ($book, $author) use (&$authorsData) {
+        if (!array_key_exists($author, $authorsData)) {
+            $authorsData[$author] = [];
+        }
+        $bookInfo = new BookInfo($book);
+        $nodeBook = new Node(["id" => $book["bid"],
+            "title" => $book["title"],
+            "type" => 1,
+            "level" => 0,
+            "bookInfo" => $bookInfo]);
+        $authorsData[$author][] = $nodeBook;
+
+    };
+
+    foreach ($db->lib_books()
+                 ->select("bid, author, genre, title, series, serno, file, size,  ext, date, lang, path")
+                 ->where("bid", $bookIds)
+                 ->where("del", null)
+                 ->where("lang", $lang)
+                 ->order("author ASC, serno ASC, title ASC") as $book) {
+        $booksCount++;
+        $authors = explode(":", $book["author"]);
+        foreach ($authors as $authorName) {
+            if (strlen(trim($authorName)) > 0) {
+                $fullname = trim(str_replace(",", " ", $authorName));
+                $addBooks($book, $fullname);
+            }
+        }
+
+    }
+    $treeData = [];
+    $totalRowsCount = 0;
+
+    foreach ($authorsData as $authorFullName => $author) {
+        $authorId = md5($authorFullName);
+        $nodeAuthor = new Node(["id" => $authorId,
+            "title" => $authorFullName,
+            "type" => 2]);
+        //$nodeAuthor->children = array_merge($author["seq"],$author["not_seq"] );
+        addNodesToArray($author, $nodeAuthor->children);
+        //addNodesToArray($author["not_seq"], $nodeAuthor->children);
+        $treeData[] = $nodeAuthor;
+        $totalRowsCount += count($nodeAuthor->children);
+
+    }
+
+
+    $treeInfo = [
+        'microtime' => microtime(true) - $start,
+        'totalRowsCount' => $totalRowsCount,
+        'totalBooks' => $booksCount,
+        'maxLevel' => 2,
+        'treeData' => $treeData
     ];
 
     return $response->withJson($treeInfo, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
