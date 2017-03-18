@@ -1,9 +1,10 @@
 <?php
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
-
+use \Books\BookInfo as BookInfo;
 
 include $_SERVER['DOCUMENT_ROOT'] . '/v1/slim.app.php';
+include $_SERVER['DOCUMENT_ROOT'] . '/v1/library/BookInfo.php';
 
 $app->get('/series/search/[{q}]', function (Request $request, Response $response) {
 
@@ -63,5 +64,48 @@ $app->get('/authors/search/[{q}]', function (Request $request, Response $respons
     return $response->withJson($authors, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
+$app->post('/books/search', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $body = $request->getParsedBody();
+    $prepare_genres_query = function($genres = array()){
+        $arr = array_map(function($genre){
+            $code = $genre["code"];
+            return "GENRE LIKE '%$code%'";
+        }, $genres);
+        $query = join(" OR ", $arr);
+        return $query;
+    };
+    $cursor = $db->lib_books_view()
+        ->select("AUTHOR, GENRE, TITLE, SERIES, SERNO,FILE, SIZE, LIBID, DEL, EXT, DATE, LANG, LIBRATE, KEYWORDS, PATH")
+        ->where("LANG", $body["language"])
+        ->and("del", null);
+    if (isset($body["genres"])) {
+        $query = $prepare_genres_query($body["genres"]);
+        $cursor = $cursor->and($query);
+    }
+    $query_arr = array();
+    if (!empty($body["bookTitle"]) && !is_null("bookTitle")) {
+        $title = $body["bookTitle"];
+        $query_arr[] = "TITLE LIKE '%$title%'";
+    }
+    if (isset($body["author"])) {
+        $author = $body["author"]["key"];
+        $query_arr[] = "AUTHOR LIKE '%$author%'";
+    }
+    if (!empty($body["serie"]) && !is_null("serie")) {
+        $serie = $body["serie"];
+        $query_arr[] = "SERIES LIKE '%$serie%'";
+    }
+    if (isset($body["operator"]) && $body["operator"]) {
+        $query = join(" AND ", $query_arr);
+    } else {
+        $query = join(" OR ", $query_arr);
+    }
+    $cursor->and($query);
+    $books = array_map(function ($row) {
+        return new BookInfo($row);
+    }, iterator_to_array($cursor));
+    return $response->withJson($books, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
 
 $app->run();
