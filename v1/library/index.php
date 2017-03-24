@@ -101,7 +101,11 @@ $app->post('/books/search', function (Request $request, Response $response) {
     } else {
         $query = join(" OR ", $query_arr);
     }
-    $cursor->and($query);
+    if(!empty($query)){
+        $cursor = $cursor->and($query);
+    }
+    $cursor = $cursor->order("SERIES ASC, SERNO ASC");
+    if($cursor->count()>1000) $cursor = $cursor->limit(1000);
     $books = array_map(function ($row) {
         return new BookInfo($row);
     }, iterator_to_array($cursor));

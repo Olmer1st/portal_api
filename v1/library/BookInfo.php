@@ -9,6 +9,7 @@ class BookInfo
         foreach ($parameters as $key => $value) {
             $key = strtolower($key);
             $this->$key = $value;
+
         }
     }
 
