@@ -5,13 +5,16 @@ require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
 require $_SERVER['DOCUMENT_ROOT'] . '/middleware/authentication.php';
 require $_SERVER['DOCUMENT_ROOT'] . '/middleware/connection.php';
 
+$authMiddleWare = new AuthenticationMiddleware();
 
 $app = new \Slim\App([
     'settings' => [
         'determineRouteBeforeAppMiddleware' => false,
         'displayErrorDetails' => true,
         'addContentLengthHeader' => false,
-        'notOrm' =>  connect()
+        'notOrm' =>  connect(),
+        'authService' => $authMiddleWare
+
     ]
 ]);
 
@@ -27,4 +30,4 @@ $app->add(function ($req, $res, $next) {
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 });
 
-$app->add(new AuthenticationMiddleware());
+$app->add($authMiddleWare);
