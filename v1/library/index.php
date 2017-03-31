@@ -4,7 +4,7 @@ use \Psr\Http\Message\ResponseInterface as Response;
 use \Books\BookInfo as BookInfo;
 
 include $_SERVER['DOCUMENT_ROOT'] . '/v1/slim.app.php';
-include $_SERVER['DOCUMENT_ROOT'] . '/v1/library/BookInfo.php';
+include $_SERVER['DOCUMENT_ROOT'] . '/modules/BookInfo.php';
 
 $app->get('/series/search/[{q}]', function (Request $request, Response $response) {
 

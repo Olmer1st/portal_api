@@ -42,22 +42,33 @@ class Users
 
     public static function login($db, $auth, $email, $password)
     {
-        global $config;
         if (!isset($email) || empty($email) || !isset($password) || empty($password)) return array("error" => "Wrong credentials, please check email/password");
         $user = $db->portal_users[array("email" => $email)];
         if (!isset($user) || !isset($user["uid"])) return array("error" => "Wrong credentials, please check email/password");
         $pw_hash = $user["password"];
         if (!password_verify($password, $pw_hash)) return array("error" => "Wrong credentials, please check email/password");
         unset($user["password"]);
-        $modules = array();
-        if ($user["role"] === $config->user_role[0]) {
-            $modules = array_map(function ($row) {
-                return $row["mid"];
-            }, iterator_to_array($db->portal_module2user()->where("uid", $user["uid"])->select("mid")));
-        }
-        $user["modules"] = $modules;
+        $user["modules"] = self::prepare_modules($db, $user);
         $user["token"] = $auth->createToken($user);
         return $user;
 
+    }
+
+    private static function prepare_modules($db, $user){
+        global $config;
+        $modules = array();
+        if ($user["role"] === $config->user_role[0]) {
+            $modules = array_map(function ($row) {
+                return $row["module"];
+            }, iterator_to_array($db->portal_module2user()->where("uid", $user["uid"])->select("module")));
+        }
+        return $modules;
+    }
+    public static function get_user_by_uid($db, $uid){
+        if (!isset($uid)) return array("error" => "Wrong user information");
+        $user = $db->portal_users[array("uid" => $uid)];
+        if (!isset($user) || !isset($user["uid"])) return array("error" => "Wrong user information");
+        $user["modules"] = self::prepare_modules($db, $user);
+        return $user;
     }
 }

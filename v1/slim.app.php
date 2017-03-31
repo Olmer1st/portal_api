@@ -26,7 +26,9 @@ $app->add(function ($req, $res, $next) {
     $response = $next($req, $res);
     return $response
         ->withHeader('Access-Control-Allow-Origin', '*')
-        ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type,  X-Auth-Token, Origin')
+//        ->withHeader('Access-Control-Expose-Headers', 'X-Access-Token, Authorization')
+//        ->withHeader('Access-Control-Allow-Credentials', 'true')
+        ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Origin, Authorization, X-Access-Token, Accept, Accept-Encoding')
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 });
 
