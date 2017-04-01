@@ -76,7 +76,7 @@ $app->post('/books/search', function (Request $request, Response $response) {
         return $query;
     };
     $cursor = $db->lib_books_view()
-        ->select("AUTHOR, GENRE, TITLE, SERIES, SERNO,FILE, SIZE, LIBID, DEL, EXT, DATE, LANG, LIBRATE, KEYWORDS, PATH")
+        ->select("BID, AUTHOR, GENRE, TITLE, SERIES, SERNO,FILE, SIZE, LIBID, DEL, EXT, DATE, LANG, LIBRATE, KEYWORDS, PATH")
         ->where("LANG", $body["language"])
         ->and("del", null);
     if (isset($body["genres"])) {
