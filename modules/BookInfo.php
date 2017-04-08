@@ -1,6 +1,6 @@
 <?php
 
-namespace Books;
+namespace modules\Books;
 
 class BookInfo
 {

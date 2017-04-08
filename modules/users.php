@@ -6,7 +6,7 @@
  * Time: 17:53
  */
 
-namespace Administration;
+namespace modules\Administration;
 
 
 class Users

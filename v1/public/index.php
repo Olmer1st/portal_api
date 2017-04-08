@@ -1,7 +1,7 @@
 <?php
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
-use \Administration\Users as Users;
+use modules\Administration\Users as Users;
 
 include $_SERVER['DOCUMENT_ROOT'] . '/v1/slim.app.php';
 include $_SERVER['DOCUMENT_ROOT'] . '/modules/users.php';

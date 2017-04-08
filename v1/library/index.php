@@ -1,10 +1,12 @@
 <?php
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
-use \Books\BookInfo as BookInfo;
+use modules\Books\BookInfo as BookInfo;
+use modules\pCloud\pCloudService as pCloud;
 
 include $_SERVER['DOCUMENT_ROOT'] . '/v1/slim.app.php';
 include $_SERVER['DOCUMENT_ROOT'] . '/modules/BookInfo.php';
+include $_SERVER['DOCUMENT_ROOT'] . '/modules/pCloud.php';
 
 $app->get('/series/search/[{q}]', function (Request $request, Response $response) {
 
@@ -64,11 +66,25 @@ $app->get('/authors/search/[{q}]', function (Request $request, Response $respons
     return $response->withJson($authors, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
+$app->post('/books/download', function (Request $request, Response $response) {
+    $body = $request->getParsedBody();
+    $content = pCloud::getDirectLink($body["folderName"], $body["fileName"]);
+    if ($content["result"] === 0 && isset($content["hosts"]) && sizeof($content["hosts"])) {
+        $url = "http://" . $content["hosts"][0] . $content["path"];
+        $file = file_get_contents($url);
+        $body = $response->getBody();
+        $body->write($file);
+        return $response;
+    }
+//    $response->withStatus(401);
+    return $response->withJson($content, 401, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
 $app->post('/books/search', function (Request $request, Response $response) {
     $db = $this->get('settings')['notOrm'];
     $body = $request->getParsedBody();
-    $prepare_genres_query = function($genres = array()){
-        $arr = array_map(function($genre){
+    $prepare_genres_query = function ($genres = array()) {
+        $arr = array_map(function ($genre) {
             $code = $genre["code"];
             return "GENRE LIKE '%$code%'";
         }, $genres);
@@ -101,11 +117,11 @@ $app->post('/books/search', function (Request $request, Response $response) {
     } else {
         $query = join(" OR ", $query_arr);
     }
-    if(!empty($query)){
+    if (!empty($query)) {
         $cursor = $cursor->and($query);
     }
     $cursor = $cursor->order("SERIES ASC, SERNO ASC");
-    if($cursor->count()>1000) $cursor = $cursor->limit(1000);
+    if ($cursor->count() > 1000) $cursor = $cursor->limit(1000);
     $books = array_map(function ($row) {
         return new BookInfo($row);
     }, iterator_to_array($cursor));
