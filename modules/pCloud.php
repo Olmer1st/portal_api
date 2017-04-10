@@ -45,6 +45,7 @@ class pCloudService
 
     public function getDirectLink($folderName = "", $fileName = "")
     {
+//      streaming supported, not require log in
         if (empty($fileName) || empty($folderName)) return array("error" => "wrong parameters");
         $api_url = $this->urlGenerator("getfilelink", array("path" => "/$folderName/$fileName"));
         $response = file_get_contents($api_url);
@@ -66,6 +67,7 @@ class pCloudService
 
     public function getZipDirectLink($bookPaths = [], $fileName = "")
     {
+//      streaming not supported, require log in
         if (!sizeof($bookPaths)) return array("error" => "wrong parameters");
         $fileIds = [];
         if(empty($fileName)) $fileName = uniqid("download_") . ".zip";
@@ -76,6 +78,7 @@ class pCloudService
             if (!is_null($fileInfo)) $fileIds[] = $fileInfo["metadata"]["fileid"];
         }
         $digest = $this->getDigest();
+//      log in using digest
         $zip_api_url = $this->urlGenerator("getziplink", array("filename" => $fileName,
             "fileids" => join(",", $fileIds),
             "username" => $this->username,
