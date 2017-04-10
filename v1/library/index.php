@@ -67,8 +67,14 @@ $app->get('/authors/search/[{q}]', function (Request $request, Response $respons
 });
 
 $app->post('/books/download', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $pCloud = new pCloud($db);
     $body = $request->getParsedBody();
-    $content = pCloud::getDirectLink($body["folderName"], $body["fileName"]);
+    if(!isset($body["count"])){
+        $content = $pCloud->getDirectLink($body["folderName"], $body["fileName"]);
+    }else{
+        $content =$pCloud->getZipDirectLink($body["bookPaths"], $body["fileName"]);
+    }
     if ($content["result"] === 0 && isset($content["hosts"]) && sizeof($content["hosts"])) {
         $url = "http://" . $content["hosts"][0] . $content["path"];
         $file = file_get_contents($url);
@@ -76,8 +82,9 @@ $app->post('/books/download', function (Request $request, Response $response) {
         $body->write($file);
         return $response;
     }
+
 //    $response->withStatus(401);
-    return $response->withJson($content, 401, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return $response->withJson($content, 500, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
 $app->post('/books/search', function (Request $request, Response $response) {
