@@ -11,8 +11,6 @@ class pCloudService
     private $client_secret = "";
     private $client_id = "";
 
-    private $pCloudConfig = array();
-
     function __construct($db)
     {
 
