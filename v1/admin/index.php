@@ -26,6 +26,10 @@ $app->get('/createuser/{email}/{password}', function (Request $request, Response
     return $newResponse;
 });
 
-
+$app->get('/users', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $users = users::getUsers($db);
+    return $response->withJson($users, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
 
 $app->run();

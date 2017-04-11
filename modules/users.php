@@ -71,4 +71,8 @@ class Users
         $user["modules"] = self::prepare_modules($db, $user);
         return $user;
     }
+
+    public static function getUsers($db){
+       return $db->portal_users()->order("uid");
+    }
 }
