@@ -54,7 +54,8 @@ class Users
 
     }
 
-    private static function prepare_modules($db, $user){
+    private static function prepare_modules($db, $user)
+    {
         global $config;
         $modules = array();
         if ($user["role"] === $config->user_role[0]) {
@@ -64,7 +65,9 @@ class Users
         }
         return $modules;
     }
-    public static function get_user_by_uid($db, $uid){
+
+    public static function get_user_by_uid($db, $uid)
+    {
         if (!isset($uid)) return array("error" => "Wrong user information");
         $user = $db->portal_users[array("uid" => $uid)];
         if (!isset($user) || !isset($user["uid"])) return array("error" => "Wrong user information");
@@ -72,7 +75,37 @@ class Users
         return $user;
     }
 
-    public static function getUsers($db){
-       return $db->portal_users()->order("uid");
+    public static function getUsers($db)
+    {
+        return $db->portal_users()->order("uid");
+    }
+
+    public static function getModules($db)
+    {
+        return $db->portal_modules()->order("mid");
+    }
+
+    public static function updateModule($db, $module)
+    {
+        if (!isset($module)) return array("error" => "Wrong parameters");
+        $affected = $db->portal_modules()->where("mid", $module["mid"])
+            ->update(array("name" => $module["name"], "title" => $module["title"]));
+        return $affected ? $module : null;
+    }
+
+    public static function insertModule($db, $module)
+    {
+        if (!isset($module)) return array("error" => "Wrong parameters");
+        $row = $db->portal_modules()->insert(array("name" => $module["name"], "title" => $module["title"]));
+        $insert_id = $db->portal_modules()->insert_id();
+        $row["mid"] = $insert_id;
+        return $row;
+    }
+
+    public static function deleteModule($db, $module_id)
+    {
+        if (!isset($module_id)) return array("error" => "Wrong parameters");
+        $affected = $db->portal_modules()->where("mid", $module_id)->delete();
+        return $affected;
     }
 }

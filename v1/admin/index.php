@@ -32,4 +32,33 @@ $app->get('/users', function (Request $request, Response $response) {
     return $response->withJson($users, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
+$app->get('/modules', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $modules = users::getModules($db);
+    return $response->withJson($modules, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
+$app->post('/modules', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $body = $request->getParsedBody();
+    $affected = null;
+    if(isset($body["module"])){
+        $module = $body["module"];
+        if(isset($module["mid"])){
+            $affected = users::updateModule($db,$module);
+        }else{
+            $affected = users::insertModule($db,$module);
+        }
+    }
+
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
+$app->delete('/modules/{mid}', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $mid = $request->getAttribute('mid');
+    $affected = users::deleteModule($db, $mid);
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
 $app->run();
