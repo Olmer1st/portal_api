@@ -61,4 +61,37 @@ $app->delete('/modules/{mid}', function (Request $request, Response $response) {
     return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
+
+$app->post('/users', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $body = $request->getParsedBody();
+    $affected = null;
+    if(isset($body["user"])){
+        $user = $body["user"];
+        if(isset($user["uid"])){
+            $affected = users::updateUser($db,$user);
+        }else{
+            $affected = users::insertUser($db,$user);
+        }
+    }
+
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
+$app->put('/users/{uid}/{lock}', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $uid = $request->getAttribute('uid');
+    $lock = $request->getAttribute('lock');
+    $affected = users::lockUser($db,$uid, $lock);
+
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
+$app->delete('/users/{uid}', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $uid = $request->getAttribute('uid');
+    $affected = users::deleteUser($db, $uid);
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
 $app->run();
