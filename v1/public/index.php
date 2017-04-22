@@ -18,12 +18,13 @@ $app->get('/hello/{name}', function (Request $request, Response $response) {
 
 
 
-$app->get('/login/{email}/{password}', function (Request $request, Response $response) {
+$app->post('/login', function (Request $request, Response $response) {
     $db = $this->get('settings')['notOrm'];
     $authService = $this->get('settings')['authService'];
-    $email = $request->getAttribute('email');
-    $password = $request->getAttribute('password');
-    $data = Users::login($db, $authService, $email, $password);
+//    $email = $request->getAttribute('email');
+//    $password = $request->getAttribute('password');
+    $body = $request->getParsedBody();
+    $data = Users::login($db, $authService, $body["email"],$body ["password"]);
     $newResponse = $response->withJson($data);
     return $newResponse;
 });

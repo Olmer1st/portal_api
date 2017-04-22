@@ -30,15 +30,18 @@ class Users
         $user = $db->portal_users()->insert(array(
             "email" => $email,
             "display" => $display,
+            "locked" => 0,
             "password" => self::createPasswordHash($password),
             "role" => "$role"
         ));
         $insert_id = $db->portal_users()->insert_id();
         $user["uid"] = $insert_id;
         if ($role === $config->user_role[0] && isset($modules)) {   // 0 user, 1 admin
-            foreach ($modules as $mid) {
-                $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mid));
+            $user["modules"] = $modules;
+            foreach ($modules as $mname) {
+                $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mname));
             }
+
         }
         unset($user["password"]);
         return $user;
@@ -132,11 +135,11 @@ class Users
         $affectedUser = $db->portal_users()->where("uid", $user["uid"])->update($update);
         unset($user["password"]);
         if ($role === $config->user_role[0] && isset($modules)) {   // 0 user, 1 admin
-            foreach ($modules as $mid) {
-               $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mid));
+            foreach ($modules as $mname) {
+               $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mname));
             }
         }
-        return $affectedUser != false ? $user : null;
+        return (!is_bool($affectedUser) && $affectedUser >=0)  ? $user : null;
     }
 
     public static function insertUser($db, $user)
