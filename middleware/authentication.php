@@ -7,47 +7,99 @@ use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
 use modules\Administration\Users as Users;
 
-//include $_SERVER['DOCUMENT_ROOT'] . '/modules/users.php';
+//require_once $_SERVER['DOCUMENT_ROOT'] . '/modules/users.php';
+use NotORM_Literal;
+
+require_once $_SERVER['DOCUMENT_ROOT'] . "/middleware/utils.php";
 
 class AuthenticationMiddleware
 {
+    private $notOrm = null;
+    private $parser = null;
+
+    function __construct($db)
+    {
+        $this->notOrm = $db;
+        $this->parser = new Parser();
+    }
+
+    private function logSession($token)
+    {
+        $ip = getUserIP();
+        $new = $this->notOrm->portal_navigation()->where("token", $token)->or("ip",$ip);
+        if(isset($new)){
+            $new->update(array("token" => $token, "ip" => $ip, "time" =>new NotORM_Literal("NOW()")));
+        }else{
+            $this->notOrm->portal_navigation()->insert(array("token" => $token,"ip" => $ip, "time" => new NotORM_Literal("NOW()")));
+        }
+
+    }
+    public function __get($property)
+    {
+        if (property_exists($this, $property)) {
+            return $this->$property;
+        }
+
+        return null;
+    }
+
+    public function __set($property, $value)
+    {
+        if (property_exists($this, $property)) {
+            $this->$property = $value;
+        }
+
+        return $this;
+    }
+
     private function check_token($module_name, $request)
     {
-        if($request->isOptions()) return true;
+        if ($request->isOptions()) return true;
         $tokenStr = $request->getHeaderLine("x-access-token");
+
         if ($module_name === "/v1/admin") {
             if (empty($tokenStr) || strlen($tokenStr) < 10) return false;
-            $token = (new Parser())->parse((string) $tokenStr); // Parses from a string
+            $this->logSession($tokenStr);
+            $token = $this->getTokenFromStr($tokenStr);
             $role = $token->getClaim('role');
-            return $role ==='admin';
-        }
-        elseif ($module_name === "/v1/public")
+            return $role === 'admin';
+        } elseif ($module_name === "/v1/public"){
+            $this->logSession($tokenStr);
             return true;
-        else{
+        }
+        else {
             if (empty($tokenStr) || strlen($tokenStr) < 10) return false;
-            $token = (new Parser())->parse((string) $tokenStr); // Parses from a string
+            $this->logSession($tokenStr);
+            $token = $this->getTokenFromStr($tokenStr);
             $role = $token->getClaim('role');
-            if($role === 'admin') return true;
-            $modules= $token->getClaim('modules');
-            foreach ($modules as $module){
-                if(strpos($module_name, $module) !== false) return true;
+            if ($role === 'admin') return true;
+            $modules = $token->getClaim('modules');
+            foreach ($modules as $module) {
+                if (strpos($module_name, $module) !== false) return true;
             }
             return false;
         }
     }
+    public function getTokenFromStr($tokenStr){
+        $token = $this->parser->parse((string)$tokenStr);
+        return $token;
+    }
 
-    public function authenticate($db, $tokenStr){
-        if(empty($tokenStr) || strlen($tokenStr)< 10) return array("error"=> "Wrong user token length");
-        try{
-            $token = (new Parser())->parse((string) $tokenStr); // Parses from a string
+    public function authenticate($tokenStr)
+    {
+        if (empty($tokenStr) || strlen($tokenStr) < 10) return array("error" => "Wrong user token length");
+        try {
+            // Parses from a string
+            $token = $this->getTokenFromStr($tokenStr);
+            $this->logSession($tokenStr);
             $uid = $token->getClaim('uid');
-            return Users::get_user_by_uid($db, $uid);
-        }
-        catch (Exception $e) {
-            return array("error"=> $e->getMessage());
+            return Users::get_user_by_uid($this->notOrm, $uid);
+        } catch (Exception $e) {
+            return array("error" => $e->getMessage());
         }
 
     }
+
     public function createToken($user)
     {
         global $config;
@@ -60,7 +112,7 @@ class AuthenticationMiddleware
 //        ->expiresAt(time() + 3600) // Configures the expiration time of the token (nbf claim)
         ->with('uid', $user["uid"])// Configures a new claim, called "uid"
         ->with('role', $user["role"])// Configures a new claim, called "role"
-        ->with('modules',$user["modules"] )// Configures a new claim, called "modules" join(",",$user["modules"])
+        ->with('modules', $user["modules"])// Configures a new claim, called "modules" join(",",$user["modules"])
         ->sign($signer, $config->secret_key)// creates a signature using "testing" as key
         ->getToken(); // Retrieves the generated token
 

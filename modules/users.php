@@ -11,45 +11,12 @@ namespace modules\Administration;
 
 class Users
 {
-    public static function isUserExist($db, $email)
-    {
-        return $db->portal_users[array("email" => $email)];
 
-    }
-    private static function createPasswordHash($password){
-        $pw_hash = password_hash($password, PASSWORD_BCRYPT, [
-            'cost' => 12,
-        ]);
-        return $pw_hash;
-    }
-    public static function createNewUser($db, $email, $display, $password, $role, $modules = null)
-    {
-        global $config;
-        if (self::isUserExist($db, $email)) return array("error" => "Email already exist in the system");
 
-        $user = $db->portal_users()->insert(array(
-            "email" => $email,
-            "display" => $display,
-            "locked" => 0,
-            "password" => self::createPasswordHash($password),
-            "role" => "$role"
-        ));
-        $insert_id = $db->portal_users()->insert_id();
-        $user["uid"] = $insert_id;
-        if ($role === $config->user_role[0] && isset($modules)) {   // 0 user, 1 admin
-            $user["modules"] = $modules;
-            foreach ($modules as $mname) {
-                $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mname));
-            }
-
-        }
-        unset($user["password"]);
-        return $user;
-    }
-
-    public static function login($db, $auth, $email, $password)
+    public static function login($auth, $email, $password)
     {
         if (!isset($email) || empty($email) || !isset($password) || empty($password)) return array("error" => "Wrong credentials, please check email/password");
+        $db = $auth->notOrm;
         $user = $db->portal_users[array("email" => $email)];
         if (!isset($user) || !isset($user["uid"])) return array("error" => "Wrong credentials, please check email/password");
         $pw_hash = $user["password"];
@@ -70,7 +37,7 @@ class Users
                 return $row["module"];
             }, iterator_to_array($db->portal_module2user()->where("uid", $user["uid"])->select("module")));
         }
-            return $modules;
+        return $modules;
     }
 
     public static function get_user_by_uid($db, $uid)
@@ -84,8 +51,8 @@ class Users
 
     public static function getUsers($db)
     {
-        $users=$db->portal_users()->order("uid");
-        foreach ($users as $user){
+        $users = $db->portal_users()->order("uid");
+        foreach ($users as $user) {
             $user["modules"] = self::prepare_modules($db, $user);
         }
         return $users;
@@ -101,7 +68,7 @@ class Users
         if (!isset($module)) return array("error" => "Wrong parameters");
         $affected = $db->portal_modules()->where("mid", $module["mid"])
             ->update(array("name" => $module["name"], "title" => $module["title"]));
-        return $affected != false? $module : null;
+        return $affected != false ? $module : null;
     }
 
     public static function insertModule($db, $module)
@@ -129,23 +96,62 @@ class Users
         $modules = $user["modules"];
         $db->portal_module2user()->where("uid", $user["uid"])->delete();
         $update = array("role" => $role, "display" => $user["display"]);
-        if(isset($user["password"]) && !empty($user["password"])){
+        if (isset($user["password"]) && !empty($user["password"])) {
             $update["password"] = self::createPasswordHash($user["password"]);
         }
         $affectedUser = $db->portal_users()->where("uid", $user["uid"])->update($update);
         unset($user["password"]);
         if ($role === $config->user_role[0] && isset($modules)) {   // 0 user, 1 admin
             foreach ($modules as $mname) {
-               $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mname));
+                $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mname));
             }
         }
-        return (!is_bool($affectedUser) && $affectedUser >=0)  ? $user : null;
+        return (!is_bool($affectedUser) && $affectedUser >= 0) ? $user : null;
+    }
+
+    private static function createPasswordHash($password)
+    {
+        $pw_hash = password_hash($password, PASSWORD_BCRYPT, [
+            'cost' => 12,
+        ]);
+        return $pw_hash;
     }
 
     public static function insertUser($db, $user)
     {
         if (!isset($user)) return array("error" => "Wrong parameters");
         return self::createNewUser($db, $user["email"], $user["display"], $user["password"], $user["role"], $user["modules"]);
+    }
+
+    public static function createNewUser($db, $email, $display, $password, $role, $modules = null)
+    {
+        global $config;
+        if (self::isUserExist($db, $email)) return array("error" => "Email already exist in the system");
+
+        $user = $db->portal_users()->insert(array(
+            "email" => $email,
+            "display" => $display,
+            "locked" => 0,
+            "password" => self::createPasswordHash($password),
+            "role" => "$role"
+        ));
+        $insert_id = $db->portal_users()->insert_id();
+        $user["uid"] = $insert_id;
+        if ($role === $config->user_role[0] && isset($modules)) {   // 0 user, 1 admin
+            $user["modules"] = $modules;
+            foreach ($modules as $mname) {
+                $db->portal_module2user()->insert(array("uid" => $user["uid"], "module" => $mname));
+            }
+
+        }
+        unset($user["password"]);
+        return $user;
+    }
+
+    public static function isUserExist($db, $email)
+    {
+        return $db->portal_users[array("email" => $email)];
+
     }
 
     public static function deleteUser($db, $user_id)
@@ -161,5 +167,18 @@ class Users
         if (!isset($user_id)) return array("error" => "Wrong parameters");
         $affected = $db->portal_users()->where("uid", $user_id)->update(array("locked" => (int)$lock));
         return $affected;
+    }
+
+    public static function getActiveUsers($auth)
+    {
+        $db = $auth->notOrm;
+        $active_users = array_map(function ($row) use ($auth)  {
+            $token = $auth->getTokenFromStr($row["token"]);
+            if($token)
+            $email = $token->getClaim('aud');
+            return array("email"=> $email, "ip" => $row["ip"], "time" => $row["time"]);
+        }, iterator_to_array($db->portal_navigation()->where("time>date_sub(NOW(), interval 5 minute)")));
+
+        return $active_users;
     }
 }

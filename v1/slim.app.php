@@ -5,14 +5,15 @@ require $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php';
 require $_SERVER['DOCUMENT_ROOT'] . '/middleware/authentication.php';
 require $_SERVER['DOCUMENT_ROOT'] . '/middleware/connection.php';
 
-$authMiddleWare = new AuthenticationMiddleware();
+$notOrm = connect();
+$authMiddleWare = new AuthenticationMiddleware($notOrm);
 
 $app = new \Slim\App([
     'settings' => [
         'determineRouteBeforeAppMiddleware' => false,
         'displayErrorDetails' => true,
         'addContentLengthHeader' => false,
-        'notOrm' =>  connect(),
+        'notOrm' =>  $notOrm,
         'authService' => $authMiddleWare
 
     ]

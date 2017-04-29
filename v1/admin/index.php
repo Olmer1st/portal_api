@@ -94,4 +94,9 @@ $app->delete('/users/{uid}', function (Request $request, Response $response) {
     return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 });
 
+$app->get('/activeusers', function (Request $request, Response $response) {
+    $authService = $this->get('settings')['authService'];
+    $affected = users::getActiveUsers($authService);
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
 $app->run();
