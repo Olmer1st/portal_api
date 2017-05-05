@@ -26,7 +26,7 @@ class AuthenticationMiddleware
     private function logSession($token)
     {
         $ip = getUserIP();
-        $new = $this->notOrm->portal_navigation()->where("token", $token)->or("ip",$ip);
+        $new = $this->notOrm->portal_navigation()->where("token", $token)->and("ip",$ip);
         if(isset($new) && $new->count()>=1){
             $new->update(array("token" => $token, "ip" => $ip, "time" =>new NotORM_Literal("NOW()")));
         }else{
