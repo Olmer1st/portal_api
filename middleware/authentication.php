@@ -27,7 +27,7 @@ class AuthenticationMiddleware
     {
         $ip = getUserIP();
         $new = $this->notOrm->portal_navigation()->where("token", $token)->or("ip",$ip);
-        if(isset($new)){
+        if(isset($new) && $new->count()>=1){
             $new->update(array("token" => $token, "ip" => $ip, "time" =>new NotORM_Literal("NOW()")));
         }else{
             $this->notOrm->portal_navigation()->insert(array("token" => $token,"ip" => $ip, "time" => new NotORM_Literal("NOW()")));
@@ -81,6 +81,7 @@ class AuthenticationMiddleware
         }
     }
     public function getTokenFromStr($tokenStr){
+        if(empty($tokenStr)) return null;
         $token = $this->parser->parse((string)$tokenStr);
         return $token;
     }

@@ -174,8 +174,8 @@ class Users
         $db = $auth->notOrm;
         $active_users = array_map(function ($row) use ($auth)  {
             $token = $auth->getTokenFromStr($row["token"]);
-            if($token)
-            $email = $token->getClaim('aud');
+            $email = "";
+            if(isset($token)) $email = $token->getClaim('aud');
             return array("email"=> $email, "ip" => $row["ip"], "time" => $row["time"]);
         }, iterator_to_array($db->portal_navigation()->where("time>date_sub(NOW(), interval 5 minute)")));
 
