@@ -26,13 +26,16 @@ class AuthenticationMiddleware
     private function logSession($token)
     {
         $ip = getUserIP();
-        $this->notOrm->portal_navigation()->insert(array("token" => $token,"ip" => $ip, "time" => new NotORM_Literal("NOW()")));
-//        $new = $this->notOrm->portal_navigation()->where("token", $token)->and("ip",$ip);
-//        if(isset($new) && $new->count()>=1){
-//            $new->update(array("token" => $token, "ip" => $ip, "time" =>new NotORM_Literal("NOW()")));
-//        }else{
-//            $this->notOrm->portal_navigation()->insert(array("token" => $token,"ip" => $ip, "time" => new NotORM_Literal("NOW()")));
-//        }
+//        $this->notOrm->portal_navigation()->insert(array("token" => $token,"ip" => $ip, "time" => new NotORM_Literal("NOW()")));
+        if(!isset($token)) $token = uniqid();
+        $new = $this->notOrm->portal_navigation()->where("token", $token)->and("ip",$ip);
+        if(isset($new) && $new->count()>=1){
+            $row = $new->fetch();
+            $cnt = $row["log_count"];
+            $new->update(array("token" => $token, "ip" => $ip, "log_count"=>$cnt+1, "time" =>new NotORM_Literal("NOW()")));
+        }else{
+            $this->notOrm->portal_navigation()->insert(array("token" => $token,"ip" => $ip,"log_count"=>1, "time" => new NotORM_Literal("NOW()")));
+        }
 
     }
     public function __get($property)
