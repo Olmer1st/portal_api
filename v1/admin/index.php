@@ -2,9 +2,11 @@
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 use modules\Administration\Users as Users;
+use modules\Administration\News as News;
 
 include $_SERVER['DOCUMENT_ROOT'] . '/v1/slim.app.php';
 include $_SERVER['DOCUMENT_ROOT'] . '/modules/users.php';
+include $_SERVER['DOCUMENT_ROOT'] . '/modules/news.php';
 
 
 //test api
@@ -72,6 +74,22 @@ $app->post('/users', function (Request $request, Response $response) {
             $affected = users::updateUser($db,$user);
         }else{
             $affected = users::insertUser($db,$user);
+        }
+    }
+
+    return $response->withJson($affected, 201, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+});
+
+$app->post('/news', function (Request $request, Response $response) {
+    $db = $this->get('settings')['notOrm'];
+    $body = $request->getParsedBody();
+    $affected = null;
+    if(isset($body["newsfile"])){
+        $newsfile = $body["newsfile"];
+        if(isset($newsfile["nid"])){
+            $affected = news::updateNewsFile($db,$newsfile);
+        }else{
+            $affected = news::insertNewsFile($db,$newsfile);
         }
     }
 
